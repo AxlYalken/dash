@@ -9,7 +9,7 @@ import { streamText } from "ai";
 vi.mock("ai", async original => ({ ...await original<typeof import("ai")>(), streamText: vi.fn(() => { throw new Error("audit-model-invoked"); }) }));
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 it("audit: unauthenticated requests reach the paid model call", async () => {
- vi.stubEnv("AI_GATEWAY_API_KEY", "audit-fake-key"); vi.stubEnv("AI_MODEL", "test/model");
+ vi.stubEnv("OPENAI_API_KEY", "audit-fake-key"); vi.stubEnv("OPENAI_BASE_URL", "https://gateway.example/openai"); vi.stubEnv("AI_MODEL", "test/model");
  const response = await chat(new Request("http://localhost/api/chat", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({data:{type:"text",data:"Доход 100"},question:"Сколько?"})}));
  expect(streamText).toHaveBeenCalledOnce(); expect(response.status).toBe(502);
 });
@@ -29,7 +29,7 @@ it("audit: the 21st chat question exceeds the server history cap", () => {
  expect(chatInputSchema.safeParse({data:{type:"text",data:"Отчёт"},messages}).success).toBe(false);
 });
 it("ignores empty assistant responses left by a stopped stream", async () => {
- vi.stubEnv("AI_GATEWAY_API_KEY", "audit-fake-key");vi.stubEnv("AI_MODEL", "test/model");
+ vi.stubEnv("OPENAI_API_KEY", "audit-fake-key"); vi.stubEnv("OPENAI_BASE_URL", "https://gateway.example/openai");vi.stubEnv("AI_MODEL", "test/model");
  const messages=[{role:"user",parts:[{type:"text",text:"Первый вопрос"}]},{role:"assistant",parts:[{type:"step-start"}]},{role:"user",parts:[{type:"text",text:"Следующий вопрос"}]}];
  const response=await chat(new Request("http://localhost/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({data:{type:"text",data:"Отчёт"},messages})}));
  expect(response.status).toBe(502);expect(streamText).toHaveBeenCalledOnce();

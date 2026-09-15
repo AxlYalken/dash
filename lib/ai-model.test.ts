@@ -1,29 +1,34 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { aiConfigurationError } from "./ai-model";
+import { aiConfigurationError, getAIModel } from "./ai-model";
+import { generateText } from "ai";
 
 beforeEach(() => {
-  vi.stubEnv("AI_GATEWAY_API_KEY", "");
-  vi.stubEnv("VERCEL_OIDC_TOKEN", "");
-  vi.stubEnv("VERCEL", "");
-  vi.stubEnv("AI_MODEL", "test/model");
+  vi.stubEnv("OPENAI_API_KEY", "netlify-test-key");
+  vi.stubEnv("OPENAI_BASE_URL", "https://gateway.example/openai");
+  vi.stubEnv("AI_MODEL", "");
 });
-afterEach(() => vi.unstubAllEnvs());
-it("accepts a Gateway key without an OpenAI key", () => {
-  vi.stubEnv("OPENAI_API_KEY", "");
-  vi.stubEnv("AI_GATEWAY_API_KEY", "test-key");
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+it("uses Netlify-injected settings and the default model", () => {
   expect(aiConfigurationError()).toBeNull();
+  expect(getAIModel().modelId).toBe("gpt-4.1-mini");
 });
-it("requires a Gateway API key even when Vercel OIDC variables are present", () => {
-  vi.stubEnv("VERCEL_OIDC_TOKEN", "test-token");
-  vi.stubEnv("VERCEL", "1");
-  expect(aiConfigurationError()).toContain("AI_GATEWAY_API_KEY");
+it("does not fall back to a direct provider endpoint", () => {
+  vi.stubEnv("OPENAI_BASE_URL", "");
+  expect(aiConfigurationError()).toContain("Netlify AI Gateway");
+  expect(() => getAIModel()).toThrow();
 });
-it("does not accept an OpenAI key as Gateway credentials", () => {
-  vi.stubEnv("OPENAI_API_KEY", "test-key");
-  expect(aiConfigurationError()).toContain("AI_GATEWAY_API_KEY");
+it("rejects a missing key and invalid URLs", () => {
+  vi.stubEnv("OPENAI_API_KEY", "");
+  expect(aiConfigurationError()).not.toBeNull();
+  vi.stubEnv("OPENAI_API_KEY", "test"); vi.stubEnv("OPENAI_BASE_URL", "file:///tmp/key");
+  expect(aiConfigurationError()).not.toBeNull();
 });
-it.each(["", "model-without-provider"])("requires a full model identifier: %s", value => {
-  vi.stubEnv("AI_GATEWAY_API_KEY", "test-key");
-  vi.stubEnv("AI_MODEL", value);
-  expect(aiConfigurationError()).toContain("AI_MODEL");
+it.each(["https://gateway.example/openai", "https://gateway.example/openai/v1/"])("sends requests to the injected endpoint: %s", async base => {
+  vi.stubEnv("OPENAI_BASE_URL", base);
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ id: "test", created: 1, model: "gpt-4.1-mini", choices: [{ index: 0, message: { role: "assistant", content: "Ответ" }, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }));
+  vi.stubGlobal("fetch", fetcher);
+  const result = await generateText({ model: getAIModel(), prompt: "Вопрос" });
+  expect(result.text).toBe("Ответ");
+  expect(String(fetcher.mock.calls[0][0])).toBe("https://gateway.example/openai/v1/chat/completions");
+  expect(new Headers(fetcher.mock.calls[0][1].headers).get("authorization")).toBe("Bearer netlify-test-key");
 });

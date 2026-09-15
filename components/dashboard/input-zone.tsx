@@ -139,7 +139,7 @@ export function InputZone({ onDataReady, disabled = false, onProcessingStart }: 
             </motion.div>
           )}
         </AnimatePresence>
-        <p className="mt-3 text-[11px] text-muted-foreground">После подготовки данные отправляются на сервер и выбранной модели через Vercel AI Gateway для анализа.</p>
+        <p className="mt-3 text-[11px] text-muted-foreground">После подготовки данные отправляются на сервер и выбранной модели через Netlify AI Gateway для анализа.</p>
       </MotionSurface>
     </section>
   );

@@ -8,6 +8,6 @@ it("distinguishes rate limits and timeouts without exposing raw messages", () =>
 
 it.each([401, 402, 403, 404])("explains Gateway status %s without leaking provider details", statusCode => {
   const message = llmErrorMessage({ statusCode, message: "secret-key" });
-  expect(message).toContain("Vercel");
+  expect(message).toContain("Netlify");
   expect(message).not.toContain("secret-key");
 });

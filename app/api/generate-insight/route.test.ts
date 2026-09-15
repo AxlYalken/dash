@@ -5,7 +5,7 @@ import type { LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import { POST } from "./route";
 
 let model: MockLanguageModelV3;
-vi.mock("ai", async (importOriginal) => ({ ...await importOriginal<typeof import("ai")>(), gateway: () => model }));
+vi.mock("@ai-sdk/openai", () => ({ createOpenAI: () => ({ chat: () => model }) }));
 const request = (data: unknown) => new Request("http://localhost/api/generate-insight", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data) });
 const input = { type: "text", data: "Выручка выросла с 100 до 120." };
 const questions = ["Как изменилась выручка?", "Какие значения сравниваются?", "Есть ли данные о причинах роста?"];
@@ -18,7 +18,7 @@ function mockOutput(value: unknown) {
     c.enqueue({ type: "text-end", id: "1" }); c.enqueue(finish); c.close();
   } }) }) });
 }
-beforeEach(() => { vi.stubEnv("AI_MODEL", "test/model"); vi.stubEnv("VERCEL", ""); vi.stubEnv("VERCEL_OIDC_TOKEN", ""); vi.stubEnv("AI_GATEWAY_API_KEY", "test-key-not-real"); mockOutput(insight); });
+beforeEach(() => { vi.stubEnv("OPENAI_BASE_URL", "https://gateway.example/openai"); vi.stubEnv("AI_MODEL", "test/model"); vi.stubEnv("VERCEL", ""); vi.stubEnv("VERCEL_OIDC_TOKEN", ""); vi.stubEnv("OPENAI_API_KEY", "test-key-not-real"); mockOutput(insight); });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("generate-insight", () => {
@@ -42,10 +42,10 @@ describe("generate-insight", () => {
     expect(model.doStreamCalls[0].prompt[0].content).toContain("максимум 8 слов");
   });
   it("returns a helpful configuration error without calling the model", async () => {
-    vi.stubEnv("AI_GATEWAY_API_KEY", "");
+    vi.stubEnv("OPENAI_API_KEY", "");
     const response = await POST(request(input));
     expect(response.status).toBe(503);
-    expect((await response.json()).error).toContain("AI_GATEWAY_API_KEY");
+    expect((await response.json()).error).toContain("Netlify AI Gateway");
     expect(model.doStreamCalls).toHaveLength(0);
   });
   it("validates the payload and request size before model calls", async () => {

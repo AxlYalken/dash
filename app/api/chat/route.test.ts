@@ -4,7 +4,7 @@ import { MockLanguageModelV3 } from "ai/test";
 import type { LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import { POST } from "./route";
 let model: MockLanguageModelV3;
-vi.mock("ai", async (importOriginal) => ({ ...await importOriginal<typeof import("ai")>(), gateway: () => model }));
+vi.mock("@ai-sdk/openai", () => ({ createOpenAI: () => ({ chat: () => model }) }));
 const data = { type: "tabular", data: [{ month: "May", value: 100 }, { month: "June", value: 120 }], columns: ["month", "value"], rowCount: 2 };
 const request = (body: unknown) => new Request("http://localhost/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 const finish: LanguageModelV3StreamPart = { type: "finish", finishReason: { unified: "stop", raw: "stop" }, usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 10, text: 10, reasoning: 0 } } };
@@ -13,7 +13,7 @@ function mockAnswer(answer = "В этом отчете нет такой инф�
     c.enqueue({ type: "text-start", id: "1" }); c.enqueue({ type: "text-delta", id: "1", delta: answer }); c.enqueue({ type: "text-end", id: "1" }); c.enqueue(finish); c.close();
   } }) }) });
 }
-beforeEach(() => { vi.stubEnv("AI_MODEL", "test/model"); vi.stubEnv("VERCEL", ""); vi.stubEnv("VERCEL_OIDC_TOKEN", ""); vi.stubEnv("AI_GATEWAY_API_KEY", "not-a-real-key"); mockAnswer(); });
+beforeEach(() => { vi.stubEnv("OPENAI_BASE_URL", "https://gateway.example/openai"); vi.stubEnv("AI_MODEL", "test/model"); vi.stubEnv("VERCEL", ""); vi.stubEnv("VERCEL_OIDC_TOKEN", ""); vi.stubEnv("OPENAI_API_KEY", "not-a-real-key"); mockAnswer(); });
 afterEach(() => vi.unstubAllEnvs());
 describe("chat route", () => {
   it("puts all rows and the exact grounding instruction into system context", async () => {
@@ -37,10 +37,10 @@ describe("chat route", () => {
     expect(model.doStreamCalls).toHaveLength(0);
   });
   it("reports missing configuration and oversized input", async () => {
-    vi.stubEnv("AI_GATEWAY_API_KEY", "");
+    vi.stubEnv("OPENAI_API_KEY", "");
     const response = await POST(request({ data, question: "Что в отчёте?" }));
     expect(response.status).toBe(503);
-    expect((await response.json()).error).toContain("AI_GATEWAY_API_KEY");
+    expect((await response.json()).error).toContain("Netlify AI Gateway");
     expect((await POST(request({ data: { type: "text", data: "x".repeat(800_000) }, question: "Что?" }))).status).toBe(413);
   });
   it("sends a text delta before the model finishes", async () => {
