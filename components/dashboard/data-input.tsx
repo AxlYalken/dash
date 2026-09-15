@@ -86,7 +86,7 @@ export function DataInput() {
         {inputIssue ? <FeedbackState kind={inputIssue.kind} title={inputIssue.kind === "empty" ? "В файле нет данных" : "Не удалось прочитать файл"} message={inputIssue.kind === "empty" ? "Загрузите CSV или Excel с непустыми строками либо вставьте текст отчёта." : `Не удалось прочитать файл, попробуй другой формат. ${inputIssue.message}`} action="Попробовать снова" onRetry={resetInput} /> : <InputZone key={inputKey} onProcessingStart={() => { setDataset(null); clear(); setError(null); }} onDataReady={handleData} disabled={parsing || isLoading} />}
       </Reveal></ErrorBoundary>
       <ErrorBoundary name="главный вывод" resetKey={dataset?.id}><Reveal delay={0.05}><HeroInsightWidget insight={object} isLoading={isLoading} isParsing={parsing} error={error} onRetry={raw.current ? retryInsight : undefined} /></Reveal></ErrorBoundary>
-      <ErrorBoundary name="графики" resetKey={dataset?.id}><Reveal delay={0.1}><ChartsGrid error={error} onRetry={retryInsight} disabled={parsing || isLoading} empty={!!inputIssue || !dataset} /></Reveal></ErrorBoundary>
+      <ErrorBoundary name="графики" resetKey={dataset?.id}><Reveal delay={0.1}><ChartsGrid data={dataset?.data ?? null} /></Reveal></ErrorBoundary>
       <ErrorBoundary name="чат" resetKey={dataset?.id}><ChatWithData key={dataset?.id ?? "empty"} data={dataset?.data ?? null} suggestedQuestions={!isLoading && !error ? object?.suggestedQuestions?.filter((q): q is string => typeof q === "string") : []} /></ErrorBoundary>
     </div>
   );

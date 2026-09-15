@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DataInput } from "./data-input";
 import type { InputZoneProps } from "./input-zone";
 
+vi.mock("./charts-grid", () => ({ ChartsGrid: () => <div>Графики</div> }));
 vi.mock("./reveal", () => ({ Reveal: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("./input-zone", () => ({ InputZone: ({ onDataReady, disabled }: InputZoneProps) => <button disabled={disabled} onClick={() => onDataReady({ source: "text", text: "Выручка выросла с 100 до 120." })}>Загрузить тестовые данные</button> }));
 beforeEach(() => { Object.defineProperty(window, "matchMedia", { writable: true, value: vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) }); });

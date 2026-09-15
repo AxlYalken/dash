@@ -17,7 +17,7 @@ export default function Home() {
       <main id="main" className="mx-auto max-w-6xl px-5 pb-[calc(var(--chat-height,12rem)+3rem)] pt-8 sm:px-8 sm:pt-10">
         <div className="mb-8 flex items-center gap-2 text-xs text-muted-foreground"><span>Рабочее пространство</span><ChevronRight className="size-3" aria-hidden="true" /><span className="text-foreground">Обзор</span></div>
         <Reveal>
-          <div className="mb-10"><p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Анализ данных с помощью ИИ</p><h1 className="text-4xl font-semibold leading-tight tracking-[-0.045em] sm:text-5xl">Ваши данные рассказывают историю.</h1><p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">Находите главное в отчётах и задавайте вопросы по своим данным.</p></div>
+          <div className="mb-10"><p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Анализ данных с помощью ИИ</p><h1 className="text-4xl font-semibold leading-tight tracking-[-0.045em] sm:text-5xl">Визуализация данных</h1><p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">Находите главное в отчётах и задавайте вопросы по своим данным.</p></div>
         </Reveal>
         <div className="section-stack"><ErrorBoundary name="дашборд"><DataInput /></ErrorBoundary></div>
         <p className="mt-6 text-xs text-muted-foreground">Начните с таблицы или отчёта — и найдите то, что важно.</p>
