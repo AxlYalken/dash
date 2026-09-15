@@ -50,7 +50,7 @@ describe("generate-insight", () => {
   });
   it("validates the payload and request size before model calls", async () => {
     for (const data of [{ type: "text", data: 123 }, { type: "tabular", data: ["bad"] }, { ...input, error: "failed" }]) expect((await POST(request(data))).status).toBe(400);
-    const oversized = request({ type: "text", data: "a".repeat(600_000) });
+    const oversized = request({ type: "text", data: "a".repeat(2 * 1024 * 1024 + 1) });
     expect((await POST(oversized)).status).toBe(413);
     expect(model.doStreamCalls).toHaveLength(0);
   });

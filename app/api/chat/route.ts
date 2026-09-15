@@ -1,3 +1,5 @@
+import { MAX_CHAT_BYTES } from "@/lib/data-limits";
+import { modelInput } from "@/lib/model-input";
 import { llmErrorMessage } from "@/lib/llm-errors";
 import { createUIMessageStreamResponse, streamText, type ModelMessage } from "ai";
 import { aiConfigurationError, getAIModel } from "@/lib/ai-model";
@@ -6,16 +8,16 @@ import { CHAT_SYSTEM_PROMPT, chatInputSchema } from "@/lib/chat-schema";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-const LIMIT = 768 * 1024;
+const LIMIT = MAX_CHAT_BYTES;
 const streamError = "Не удалось завершить ответ. Проверьте доступ к модели и повторите вопрос.";
 const fail = (error: string, status: number) => Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
 
 async function handlePost(request: Request) {
   if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return fail("Передайте вопрос и данные в JSON.", 415);
-  if (Number(request.headers.get("content-length")) > LIMIT) return fail("Отчёт и история чата превышают лимит 768 КБ. Сократите данные или начните новый чат.", 413);
+  if (Number(request.headers.get("content-length")) > LIMIT) return fail("Отчёт и история чата превышают лимит 3 МБ. Сократите данные или начните новый чат.", 413);
   let body: unknown;
   try { body = await boundedJson(request, LIMIT); }
-  catch (error) { return fail(error instanceof RangeError ? "Отчёт и история чата превышают лимит 768 КБ." : "Некорректный JSON запроса.", error instanceof RangeError ? 413 : 400); }
+  catch (error) { return fail(error instanceof RangeError ? "Отчёт и история чата превышают лимит 3 МБ." : "Некорректный JSON запроса.", error instanceof RangeError ? 413 : 400); }
   const parsed = chatInputSchema.safeParse(body);
   if (!parsed.success) return fail("Передайте распарсенный отчёт в data и непустой question (до 2000 символов) либо messages (до 40 сообщений).", 400);
   const { data, question } = parsed.data;
@@ -24,7 +26,7 @@ async function handlePost(request: Request) {
   if (!last || last.role !== "user" || messages.some(message => !message.content) || String(last.content).length > 2000) return fail("Последнее сообщение должно содержать непустой вопрос до 2000 символов.", 400);
   const configurationError = aiConfigurationError();
   if (configurationError) return fail(configurationError, 503);
-  const normalized = data.type === "tabular" ? { type: data.type, data: data.data, columns: Array.from(new Set(data.data.flatMap(row => Object.keys(row)))), rowCount: data.data.length } : data;
+  const normalized = modelInput(data);
   const abort = new AbortController();
   const onAbort = () => abort.abort();
   request.signal.addEventListener("abort", onAbort, { once: true });

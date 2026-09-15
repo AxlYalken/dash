@@ -1,3 +1,5 @@
+import { MAX_REPORT_BYTES } from "@/lib/data-limits";
+import { modelInput } from "@/lib/model-input";
 import { generateObject } from "ai";
 import { aiConfigurationError, getAIModel } from "@/lib/ai-model";
 import { boundedJson } from "@/lib/api-body";
@@ -16,11 +18,11 @@ export async function POST(request: Request) {
   try {
     if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return fail("Передайте данные отчёта в JSON.", 415);
     let body: unknown;
-    try { body = await boundedJson(request, 512 * 1024); }
-    catch (error) { return fail(error instanceof RangeError ? "Для графиков передайте не более 512 КБ данных." : "Не удалось прочитать данные отчёта.", error instanceof RangeError ? 413 : 400); }
+    try { body = await boundedJson(request, MAX_REPORT_BYTES); }
+    catch (error) { return fail(error instanceof RangeError ? "Для графиков передайте не более 2 МБ данных." : "Не удалось прочитать данные отчёта.", error instanceof RangeError ? 413 : 400); }
     const parsed = insightInputSchema.safeParse(body);
     if (!parsed.success) return fail("Неверный формат данных для графиков.", 400);
-    const input = parsed.data.type === "tabular" ? { type: "tabular" as const, data: parsed.data.data, columns: Array.from(new Set(parsed.data.data.flatMap(row => Object.keys(row)))), rowCount: parsed.data.data.length } : parsed.data;
+    const input = modelInput(parsed.data);
     const config = aiConfigurationError();
     if (config) return fail(config, 503);
     request.signal.addEventListener("abort", abort, { once: true });

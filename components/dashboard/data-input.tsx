@@ -36,7 +36,7 @@ export function DataInput() {
     api: "/api/generate-insight",
     schema: insightSchema,
     fetch: insightFetch,
-    onError: error => setError(/^(Генерация не настроена|Не удалось|Лимит|Модель)/.test(error.message) || error.message.includes("512 КБ") ? error.message : "Поток ответа прервался. Повторите генерацию."),
+    onError: error => setError(/^(Генерация не настроена|Не удалось|Лимит|Модель)/.test(error.message) || error.message.includes("2 МБ") ? error.message : "Поток ответа прервался. Повторите генерацию."),
     onFinish: ({ object, error }) => {
       if (error || !object || !validInsight(object)) setError("Модель вернула неполный или некорректный инсайт. Попробуйте ещё раз.");
     },
@@ -83,7 +83,7 @@ export function DataInput() {
   return (
     <div className="section-stack">
       <ErrorBoundary name="загрузку данных" resetKey={inputKey}><Reveal>
-        {inputIssue ? <FeedbackState kind={inputIssue.kind} title={inputIssue.kind === "empty" ? "В файле нет данных" : "Не удалось прочитать файл"} message={inputIssue.kind === "empty" ? "Загрузите CSV или Excel с непустыми строками либо вставьте текст отчёта." : `Не удалось прочитать файл, попробуй другой формат. ${inputIssue.message}`} action="Попробовать снова" onRetry={resetInput} /> : <InputZone key={inputKey} onProcessingStart={() => { setDataset(null); clear(); setError(null); }} onDataReady={handleData} disabled={parsing || isLoading} />}
+        {inputIssue ? <FeedbackState kind={inputIssue.kind} title={inputIssue.kind === "empty" ? "В файле нет данных" : "Не удалось обработать данные"} message={inputIssue.kind === "empty" ? "Загрузите CSV или Excel с непустыми строками либо вставьте текст отчёта." : inputIssue.message} action="Попробовать снова" onRetry={resetInput} /> : <InputZone key={inputKey} onProcessingStart={() => { setDataset(null); clear(); setError(null); }} onDataReady={handleData} disabled={parsing || isLoading} />}
       </Reveal></ErrorBoundary>
       <ErrorBoundary name="главный вывод" resetKey={dataset?.id}><Reveal delay={0.05}><HeroInsightWidget insight={object} isLoading={isLoading} isParsing={parsing} error={error} onRetry={raw.current ? retryInsight : undefined} /></Reveal></ErrorBoundary>
       <ErrorBoundary name="графики" resetKey={dataset?.id}><Reveal delay={0.1}><ChartsGrid data={dataset?.data ?? null} /></Reveal></ErrorBoundary>

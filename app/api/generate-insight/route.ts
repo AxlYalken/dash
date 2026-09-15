@@ -1,3 +1,5 @@
+import { MAX_REPORT_BYTES } from "@/lib/data-limits";
+import { modelInput } from "@/lib/model-input";
 import { llmErrorMessage } from "@/lib/llm-errors";
 import { boundedJson } from "@/lib/api-body";
 import { streamObject } from "ai";
@@ -7,7 +9,7 @@ import { INSIGHT_SYSTEM_PROMPT } from "@/lib/insight-prompt";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-const LIMIT = 512 * 1024;
+const LIMIT = MAX_REPORT_BYTES;
 
 function failure(error: string, status: number) {
   return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
@@ -16,14 +18,14 @@ function failure(error: string, status: number) {
 
 async function handlePost(request: Request) {
   if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return failure("Передайте распарсенные данные в JSON.", 415);
-  if (Number(request.headers.get("content-length")) > LIMIT) return failure("Для одного инсайта передайте не более 512 КБ JSON. Выберите меньший набор данных.", 413);
+  if (Number(request.headers.get("content-length")) > LIMIT) return failure("Для одного инсайта передайте не более 2 МБ JSON. Выберите меньший набор данных.", 413);
   let body: unknown;
   try { body = await boundedJson(request, LIMIT); }
-  catch (error) { return failure(error instanceof RangeError ? "Данные превышают лимит 512 КБ. Выберите меньший набор." : "Не удалось прочитать JSON с данными.", error instanceof RangeError ? 413 : 400); }
+  catch (error) { return failure(error instanceof RangeError ? "Данные превышают лимит 2 МБ. Выберите меньший набор." : "Не удалось прочитать JSON с данными.", error instanceof RangeError ? 413 : 400); }
   const parsed = insightInputSchema.safeParse(body);
   if (!parsed.success) return failure("Ожидается { type: 'tabular', data: массив строк } или { type: 'text', data: строка }. Уберите поле error из входных данных.", 400);
   // Metadata comes from the actual rows, not untrusted counts in the request.
-  const input = parsed.data.type === "tabular" ? { type: "tabular", data: parsed.data.data, columns: Array.from(new Set(parsed.data.data.flatMap(row => Object.keys(row)))), rowCount: parsed.data.data.length } : parsed.data;
+  const input = modelInput(parsed.data);
   const configurationError = aiConfigurationError();
   if (configurationError) return failure(configurationError, 503);
 

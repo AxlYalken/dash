@@ -1,3 +1,4 @@
+import { MAX_REPORT_BYTES } from "./data-limits";
 import { checkExcelContainer } from "./excel-container";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -68,7 +69,7 @@ function normalizeTable(input: unknown[][], headers: HeaderMode): ParseDataRespo
   for (const row of values) {
     const record = Object.fromEntries(columns.map((name, i) => [name, row[i] ?? null]));
     outputBytes += encoder.encode(JSON.stringify(record)).length + (data.length ? 1 : 0);
-    if (outputBytes > 512 * 1024) throw new ParseDataError("Таблица после обработки превышает лимит анализа 512 КБ. Выберите меньше строк или колонок.", 413);
+    if (outputBytes > MAX_REPORT_BYTES) throw new ParseDataError("Таблица после обработки превышает лимит анализа 2 МБ. Выберите меньше строк или колонок.", 413);
     data.push(record);
   }
   return { type: "tabular", data, columns, rowCount: data.length };
@@ -79,7 +80,7 @@ export function parseText(text: string): ParseDataResponse {
   if (!data) throw new ParseDataError("Текст пуст. Вставьте текст отчёта.", 422, "EMPTY_DATA");
   if (data.length > 100_000) throw new ParseDataError("Текст слишком длинный для анализа. Максимум — 100 000 символов.", 413);
   const result = { type: "text" as const, data };
-  if (new TextEncoder().encode(JSON.stringify(result)).length > 512 * 1024) throw new ParseDataError("Текст после обработки превышает лимит анализа 512 КБ.", 413);
+  if (new TextEncoder().encode(JSON.stringify(result)).length > MAX_REPORT_BYTES) throw new ParseDataError("Текст после обработки превышает лимит анализа 2 МБ.", 413);
   return result;
 }
 

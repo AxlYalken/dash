@@ -23,7 +23,7 @@ describe("chat route", () => {
     expect(body).toContain("В этом отчете нет такой информации");
     const system = model.doStreamCalls[0].prompt[0].content;
     expect(system).toContain("Отвечай ТОЛЬКО на основе предоставленных данных");
-    expect(system).toContain(JSON.stringify(data.data));
+    expect(system).toContain(JSON.stringify(data.data.map(row => [row.month, row.value])));
     expect(system).toContain("не используй общие знания");
   });
   it("accepts text data and useChat message parts, retaining conversational context", async () => {
@@ -41,7 +41,7 @@ describe("chat route", () => {
     const response = await POST(request({ data, question: "Что в отчёте?" }));
     expect(response.status).toBe(503);
     expect((await response.json()).error).toContain("Netlify AI Gateway");
-    expect((await POST(request({ data: { type: "text", data: "x".repeat(800_000) }, question: "Что?" }))).status).toBe(413);
+    expect((await POST(request({ data: { type: "text", data: "x".repeat(3 * 1024 * 1024 + 1) }, question: "Что?" }))).status).toBe(413);
   });
   it("sends a text delta before the model finishes", async () => {
     let source!: ReadableStreamDefaultController<LanguageModelV3StreamPart>;

@@ -45,6 +45,6 @@ it("keeps deduplicated long headers compatible with the analysis schema", () => 
  expect(insightInputSchema.safeParse(result).success).toBe(true);
  if (result.type === "tabular") expect(new Set(result.columns).size).toBe(3);
 });
-it("rejects escaped text whose serialized request exceeds 512 KB", () => {
- expect(() => parseText("\ud800".repeat(100000))).toThrow(/512 КБ/);
+it("accepts escaped text within the increased report budget", () => {
+ expect(parseText("\ud800".repeat(100000)).data).toHaveLength(100000);
 });
