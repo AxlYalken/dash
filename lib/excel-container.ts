@@ -1,5 +1,16 @@
 import { inflateRawSync } from "node:zlib";
 
+const crcTable = Uint32Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit++) value = (value >>> 1) ^ ((value & 1) ? 0xedb88320 : 0);
+  return value >>> 0;
+});
+function crc32(bytes: Uint8Array): number {
+  let value = 0xffffffff;
+  for (const byte of bytes) value = (value >>> 8) ^ crcTable[(value ^ byte) & 0xff];
+  return (value ^ 0xffffffff) >>> 0;
+}
+
 // Validate and bound ZIP expansion before SheetJS allocates XML strings/cells.
 export function checkExcelContainer(bytes: Uint8Array): void {
   const b = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -36,8 +47,9 @@ export function checkExcelContainer(bytes: Uint8Array): void {
     if (ranges.some(([a, z]) => offset < z && start + compressed > a)) return fail();
     ranges.push([offset, start + compressed]);
     const data = b.subarray(start, start + compressed);
-    const actual = method === 0 ? data.length : inflateRawSync(data, { maxOutputLength: Math.max(1, expanded) }).length;
-    if (actual !== expanded) return fail();
+    const unpacked = method === 0 ? data : inflateRawSync(data, { maxOutputLength: Math.max(1, expanded) });
+    const expectedCRC = b.readUInt32LE(cursor + 16);
+    if (unpacked.length !== expanded || crc32(unpacked) !== expectedCRC || (!(flags & 8) && b.readUInt32LE(offset + 14) !== expectedCRC)) return fail();
     cursor += 46 + nameLength + extra + comment;
   }
   if (cursor !== end || !names.has("[Content_Types].xml") || !names.has("xl/workbook.xml")) return fail();

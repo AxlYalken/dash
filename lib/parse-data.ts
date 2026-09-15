@@ -52,7 +52,10 @@ function normalizeTable(input: unknown[][], headers: HeaderMode): ParseDataRespo
     if (base.length > 256) throw new ParseDataError("Название колонки слишком длинное. Максимум — 256 символов.", 413);
     let name = base;
     let suffix = 2;
-    while (used.has(name)) name = `${base}_${suffix++}`;
+    while (used.has(name)) {
+      const ending = `_${suffix++}`;
+      name = `${base.slice(0, 256 - ending.length)}${ending}`;
+    }
     used.add(name);
     return name;
   });
@@ -75,7 +78,9 @@ export function parseText(text: string): ParseDataResponse {
   const data = cleanText(text);
   if (!data) throw new ParseDataError("Текст пуст. Вставьте текст отчёта.", 422, "EMPTY_DATA");
   if (data.length > 100_000) throw new ParseDataError("Текст слишком длинный для анализа. Максимум — 100 000 символов.", 413);
-  return { type: "text", data };
+  const result = { type: "text" as const, data };
+  if (new TextEncoder().encode(JSON.stringify(result)).length > 512 * 1024) throw new ParseDataError("Текст после обработки превышает лимит анализа 512 КБ.", 413);
+  return result;
 }
 
 export function parseFile(bytes: Uint8Array, name: string, headers: HeaderMode): ParseDataResponse {

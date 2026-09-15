@@ -41,3 +41,12 @@ it("rejects blank model headlines", () => {
   expect(insightSchema.safeParse(value).success).toBe(false);
   expect(validInsight(value)).toBe(false);
 });
+
+it("rejects corrupted ZIP payloads with unchanged sizes", () => {
+ const bytes = book(false);
+ const central = bytes.indexOf(Buffer.from([0x50, 0x4b, 1, 2]));
+ const offset = bytes.readUInt32LE(central + 42);
+ const start = offset + 30 + bytes.readUInt16LE(offset + 26) + bytes.readUInt16LE(offset + 28);
+ bytes[start] ^= 1;
+ expect(() => checkExcelContainer(bytes)).toThrow();
+});

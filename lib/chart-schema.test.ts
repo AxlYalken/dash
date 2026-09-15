@@ -25,3 +25,29 @@ it("rejects ungrounded text numbers", () => {
 it("renders all three allowed types", () => {
   for (const type of ["bar", "pie", "line"] as const) expect(resolveCharts(plan({ type }), { type: "tabular", data: [{ name: "A", value: 1 }, { name: "B", value: 2 }] }).charts[0].type).toBe(type);
 });
+
+it("adds a comparison to a single valid timeline without inventing values", () => {
+  const result = resolveCharts(plan({ type: "line" }), { type: "tabular", data: [{ name: "Январь", value: 10 }, { name: "Февраль", value: 20 }] });
+  expect(result.charts.map(chart => chart.type)).toEqual(["line", "bar"]);
+  expect(result.charts[1].points).toEqual(result.charts[0].points);
+});
+it("deduplicates model charts and supplies a ranked view", () => {
+  const result = resolveCharts({ charts: [spec, spec, spec], explanation: "" }, { type: "tabular", data: [{ name: "A", value: 10 }, { name: "B", value: 20 }] });
+  expect(result.charts).toHaveLength(2);
+  expect(result.charts[1].points).toEqual([{ label: "B", value: 20 }, { label: "A", value: 10 }]);
+});
+
+it("does not attach a neighbouring category's number to a text label", () => {
+ const result = resolveCharts(plan({ points: [{ label: "A", value: 20, evidence: "A: 10; B: 20" }, { label: "B", value: 20, evidence: "B: 20" }] }), { type: "text", data: "A: 10; B: 20" });
+ expect(result.charts).toEqual([]);
+});
+it("does not mistake the mantissa of scientific notation for the value", () => {
+ const result = resolveCharts(plan({ points: [{ label: "A", value: 1, evidence: "A: 1e3" }, { label: "B", value: 2, evidence: "B: 2" }] }), { type: "text", data: "A: 1e3; B: 2" });
+ expect(result.charts).toEqual([]);
+});
+it("rejects values that overflow a chart scale or pie total", () => {
+ expect(resolveCharts(plan({ type: "pie" }), { type: "tabular", data: [{ name: "A", value: 1e308 }, { name: "B", value: 1e308 }] }).charts).toEqual([]);
+});
+it("detects duplicate categories after trimming whitespace", () => {
+ expect(resolveCharts(plan(), { type: "tabular", data: [{ name: "A", value: 1 }, { name: " A ", value: 2 }] }).charts).toEqual([]);
+});

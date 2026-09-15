@@ -22,3 +22,11 @@ it("sanitizes model failures", async () => {
   expect(response.status).toBe(502);
   expect(await response.text()).not.toContain("private-key");
 });
+
+it("recomputes metadata before passing the report to the model", async () => {
+ generate.mockResolvedValue({ object: { charts: [], explanation: "Нет графиков" } });
+ await POST(request({ type: "tabular", data: [{ name: "A", value: 10 }], columns: ["fake"], rowCount: 999 }));
+ const input = JSON.parse(generate.mock.calls[0][0].prompt);
+ expect(input.columns).toEqual(["name", "value"]);
+ expect(input.rowCount).toBe(1);
+});

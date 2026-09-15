@@ -38,3 +38,13 @@ it("validates column limits on direct API payloads", () => {
  const data=[Object.fromEntries(Array.from({length:501},(_,i)=>[`c${i}`,1]))];
  expect(insightInputSchema.safeParse({type:"tabular",data}).success).toBe(false);
 });
+
+it("keeps deduplicated long headers compatible with the analysis schema", () => {
+ const heading = "a".repeat(256);
+ const result = parseFile(new TextEncoder().encode(`${heading},${heading},${heading}\n1,2,3`), "data.csv", true);
+ expect(insightInputSchema.safeParse(result).success).toBe(true);
+ if (result.type === "tabular") expect(new Set(result.columns).size).toBe(3);
+});
+it("rejects escaped text whose serialized request exceeds 512 KB", () => {
+ expect(() => parseText("\ud800".repeat(100000))).toThrow(/512 КБ/);
+});

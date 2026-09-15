@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ChartsGrid } from "./charts-grid";
 vi.mock("recharts", async original => {
@@ -21,4 +21,27 @@ it("shows empty data and handles request failure", async () => {
   rerender(<ChartsGrid data={{ type: "text", data: "Отчёт" }} />);
   await waitFor(() => expect(screen.getByRole("button", { name: "Повторить" })).toBeTruthy());
   expect(screen.getByRole("alert").textContent).not.toContain("private");
+});
+
+it("supports category selection and reversible value sorting", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ charts: [{ type: "bar", title: "Продажи", reason: "Сравнение", points: [{ label: "A", value: 10 }, { label: "B", value: 20 }] }], explanation: "" })));
+  render(<ChartsGrid data={{ type: "text", data: "A: 10; B: 20" }} />);
+  const select = await screen.findByRole("combobox", { name: "Категория: Продажи" });
+  fireEvent.change(select, { target: { value: "A" } });
+  expect(screen.getByText("Выбрано · A")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "По значению" }));
+  expect(screen.getByRole("button", { name: "Исходный порядок" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("table").querySelector("tbody tr td")?.textContent).toBe("B");
+  fireEvent.click(screen.getByRole("button", { name: "Исходный порядок" }));
+  expect(screen.getByRole("table").querySelector("tbody tr td")?.textContent).toBe("A");
+  fireEvent.change(select, { target: { value: "" } });
+  expect(screen.getByText("Максимум · B")).toBeTruthy();
+});
+
+it("preserves small nonzero values in the source table", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ charts: [{ type: "bar", title: "Доли", reason: "Сравнение", points: [{ label: "A", value: 0.001 }, { label: "B", value: 0.002 }] }], explanation: "" })));
+  render(<ChartsGrid data={{ type: "text", data: "A: 0.001; B: 0.002" }} />);
+  const table = await screen.findByRole("table");
+  expect(table.textContent).toContain("0,001");
+  expect(table.textContent).toContain("0,002");
 });

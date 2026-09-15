@@ -66,6 +66,7 @@ export function InputZone({ onDataReady, disabled = false, onProcessingStart }: 
   const { getRootProps, getInputProps, isDragActive, isDragReject, isFocused } = useDropzone({
     accept: ACCEPTED_FILES,
     multiple: false,
+    maxSize: 4 * 1024 * 1024,
     disabled: processing || disabled,
     // MIME types can be missing or misleading; enforce the actual extension too.
     validator: (file) => /\.(csv|xlsx|xls)$/i.test(file.name)
@@ -75,7 +76,8 @@ export function InputZone({ onDataReady, disabled = false, onProcessingStart }: 
       if (busy.current || disabled) return;
       if (rejections.length) {
         const tooMany = rejections.some(({ errors }) => errors.some(({ code }) => code === "too-many-files"));
-        setError(tooMany ? "Выберите один файл за раз." : "Этот формат не поддерживается. Выберите файл .csv, .xlsx или .xls.");
+        const tooLarge = rejections.some(({ errors }) => errors.some(({ code }) => code === "file-too-large"));
+        setError(tooLarge ? "Файл слишком большой. Для загрузки на Netlify выберите файл до 4 МБ." : tooMany ? "Выберите один файл за раз." : "Этот формат не поддерживается. Выберите файл .csv, .xlsx или .xls.");
         return;
       }
       if (files[0]) processData({ source: "file", file: files[0] });
@@ -120,10 +122,10 @@ export function InputZone({ onDataReady, disabled = false, onProcessingStart }: 
               <span className="mb-3 flex size-11 items-center justify-center rounded-xl border bg-card shadow-sm"><FileSpreadsheet className="size-5 text-muted-foreground" aria-hidden="true" /></span>
               <p className="text-sm font-medium">{isDragActive ? "Отпустите файл здесь" : "Перетащите файл сюда"}</p>
               <p className="mt-1 text-sm text-muted-foreground">или нажмите, чтобы выбрать на устройстве</p>
-              <p id={`${id}-formats`} className="mt-4 text-xs text-muted-foreground">CSV, XLSX или XLS · один файл</p>
+              <p id={`${id}-formats`} className="mt-4 text-xs text-muted-foreground">CSV, XLSX или XLS · один файл до 4 МБ</p>
             </div>
           ) : (
-            <form onSubmit={(event) => { event.preventDefault(); if (!text.trim()) { setError("Вставьте текст отчёта перед обработкой."); return; } processData({ source: "text", text: text.trim() }); }} className="space-y-3">
+            <form onSubmit={(event) => { event.preventDefault(); if (text.length > 100_000) { setError("Текст слишком длинный. Максимум — 100 000 символов."); return; } if (!text.trim()) { setError("Вставьте текст отчёта перед обработкой."); return; } processData({ source: "text", text: text.trim() }); }} className="space-y-3">
               <label htmlFor={`${id}-text`} className="block text-sm font-medium">Текст отчёта</label>
               <textarea disabled={disabled} id={`${id}-text`} value={text} onChange={(event) => { setText(event.target.value); setError(null); }} placeholder="Вставьте сырой отчёт, заметки или любой текст с данными…" className="min-h-36 w-full resize-y rounded-xl border bg-background/60 px-4 py-3 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm" />
               <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted-foreground">Форматировать текст не нужно</span><Button type="submit" disabled={disabled || !text.trim()} className="rounded-xl">Обработать текст</Button></div>

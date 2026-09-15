@@ -20,12 +20,13 @@ export async function POST(request: Request) {
     catch (error) { return fail(error instanceof RangeError ? "Для графиков передайте не более 512 КБ данных." : "Не удалось прочитать данные отчёта.", error instanceof RangeError ? 413 : 400); }
     const parsed = insightInputSchema.safeParse(body);
     if (!parsed.success) return fail("Неверный формат данных для графиков.", 400);
+    const input = parsed.data.type === "tabular" ? { type: "tabular" as const, data: parsed.data.data, columns: Array.from(new Set(parsed.data.data.flatMap(row => Object.keys(row)))), rowCount: parsed.data.data.length } : parsed.data;
     const config = aiConfigurationError();
     if (config) return fail(config, 503);
     request.signal.addEventListener("abort", abort, { once: true });
     if (request.signal.aborted) abort();
     timeout = setTimeout(() => { timedOut = true; abort(); }, 50_000);
-    const { object } = await generateObject({ model: getAIModel(), schema: chartPlanSchema, system: CHART_PROMPT, prompt: JSON.stringify(parsed.data), maxOutputTokens: 5000, maxRetries: 1, abortSignal: controller.signal });
+    const { object } = await generateObject({ model: getAIModel(), schema: chartPlanSchema, system: CHART_PROMPT, prompt: JSON.stringify(input), maxOutputTokens: 5000, maxRetries: 1, abortSignal: controller.signal });
     return Response.json(resolveCharts(object, parsed.data), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return fail(llmErrorMessage(error, timedOut), timedOut ? 504 : 502);

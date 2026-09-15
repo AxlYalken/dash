@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         type = "tabular";
         const file = files[0];
         if (typeof file === "string") throw new ParseDataError("Поле file должно содержать файл.", 400);
-        return NextResponse.json<ParseDataResponse>(parseFile(new Uint8Array(await file.arrayBuffer()), file.name, headerMode(form.get("hasHeaders"))));
+        return NextResponse.json<ParseDataResponse>(parseFile(new Uint8Array(await file.arrayBuffer()), file.name, headerMode(form.get("hasHeaders"))), { headers: { "Cache-Control": "no-store" } });
       }
       text = texts[0];
     } else if (mime === "application/json") {
@@ -68,12 +68,12 @@ export async function POST(request: Request) {
     }
     if (typeof text !== "string") throw new ParseDataError("Передайте непустую строку в поле text.", 400);
     if (new TextEncoder().encode(text).length > MAX_BYTES) throw new ParseDataError("Текст слишком большой. Максимум — 10 МБ.", 413);
-    return NextResponse.json<ParseDataResponse>(parseText(text));
+    return NextResponse.json<ParseDataResponse>(parseText(text), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const known = error instanceof ParseDataError;
     const message = known ? error.message : "Не удалось обработать данные. Проверьте файл или текст и повторите попытку.";
     const code = known ? error.code : "INTERNAL_ERROR";
     const body: ParseDataResponse = type === "tabular" ? { type, data: [], error: message, code } : { type, data: "", error: message, code };
-    return NextResponse.json<ParseDataResponse>(body, { status: known ? error.status : 500 });
+    return NextResponse.json<ParseDataResponse>(body, { status: known ? error.status : 500, headers: { "Cache-Control": "no-store" } });
   }
 }

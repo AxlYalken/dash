@@ -95,3 +95,21 @@ describe("InputZone", () => {
     expect(ready).not.toHaveBeenCalled();
   });
 });
+
+it("rejects files above the Netlify upload budget before any processing", async () => {
+ const ready = vi.fn();
+ render(<InputZone onDataReady={ready} />);
+ await drop([new File([new Uint8Array(4 * 1024 * 1024 + 1)], "large.csv")]);
+ expect(screen.getByRole("alert").textContent).toContain("до 4 МБ");
+ expect(screen.queryByRole("progressbar")).toBeNull();
+ expect(ready).not.toHaveBeenCalled();
+});
+it("rejects oversized text without starting the mock processing", () => {
+ const ready = vi.fn();
+ render(<InputZone onDataReady={ready} />);
+ enterText("a".repeat(100001));
+ fireEvent.click(screen.getByRole("button", { name: "Обработать текст" }));
+ expect(screen.getByRole("alert").textContent).toContain("100 000");
+ expect(screen.queryByRole("progressbar")).toBeNull();
+ expect(ready).not.toHaveBeenCalled();
+});
